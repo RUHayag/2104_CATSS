@@ -1,7 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
+
 package user_name;
 
 import javax.swing.JFrame;
@@ -11,20 +8,15 @@ import java.util.logging.Logger;
 import java.sql.*;
 import menu.menu;
 
-/**
- *
- * @author ronia
- */
+
 public class username extends javax.swing.JFrame {
 
-    /**
-     * Creates new form username
-     */
+   
     public username() {
         initComponents();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
-    
+     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -39,9 +31,9 @@ public class username extends javax.swing.JFrame {
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         lSU.setFont(new java.awt.Font("Segoe UI", 1, 36)); // NOI18N
-        lSU.setForeground(new java.awt.Color(255, 0, 51));
+        lSU.setForeground(new java.awt.Color(255, 204, 102));
         lSU.setText("SignUp");
-        getContentPane().add(lSU, new org.netbeans.lib.awtextra.AbsoluteConstraints(710, 310, -1, -1));
+        getContentPane().add(lSU, new org.netbeans.lib.awtextra.AbsoluteConstraints(700, 310, -1, -1));
 
         lName.setBackground(new java.awt.Color(204, 204, 204));
         lName.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
@@ -59,13 +51,14 @@ public class username extends javax.swing.JFrame {
 
         bntOK.setBackground(new java.awt.Color(51, 153, 255));
         bntOK.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        bntOK.setForeground(new java.awt.Color(255, 255, 255));
         bntOK.setText("OK");
         bntOK.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 bntOKActionPerformed(evt);
             }
         });
-        getContentPane().add(bntOK, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 440, 60, -1));
+        getContentPane().add(bntOK, new org.netbeans.lib.awtextra.AbsoluteConstraints(830, 440, 70, 30));
 
         lBG.setIcon(new javax.swing.ImageIcon("C:\\Users\\ronia\\Downloads\\KAPE.jpg")); // NOI18N
         getContentPane().add(lBG, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, -10, 1920, -1));
@@ -80,28 +73,27 @@ public class username extends javax.swing.JFrame {
     private void bntOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_bntOKActionPerformed
         try {
             String customerName = txtName.getText();
-            
-            Class.forName("com.mysql.jdbc.Driver");
+        
+            Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection("jdbc:mysql://localhost/coffeetea","root","");
-            PreparedStatement ps = con.prepareStatement("insert into customers(customerName)values(?)");
+            PreparedStatement ps = con.prepareStatement("INSERT INTO customers(customerName)VALUES(?)");
             ps.setString(1, customerName);
             ps.executeUpdate();
-            
+        
             if(customerName.isEmpty()){
                 JOptionPane.showMessageDialog(this, "Please enter your name first.");
             }
             else {
                 this.setVisible(false);
-                
+            
                 menu menuFrame = new menu();
                 menuFrame.setUserName(customerName);
                 menuFrame.setVisible(true);
-                
+            
             }
         } catch (Exception ex) {
             Logger.getLogger(username.class.getName()).log(Level.SEVERE, null, ex);
         }
-
     }//GEN-LAST:event_bntOKActionPerformed
 
     /**

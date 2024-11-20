@@ -4,44 +4,89 @@ package Stocks;
 import javax.swing.*;
 import menu.menu;
 import java.sql.*;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.table.DefaultTableModel;
 
 
 public class stocks extends javax.swing.JFrame {
 
-    private String userName;
     private String password;
+    String ProductNames = "";
+    String ProductPrices = "";
+    String ProductsQuantity = "";
     
-    public void setuserName(String userName) {
-        this.userName = userName;
-    }
-
     public void setPassword(String password) {
         this.password = password;
+    }
+     public void setPname(String ProductNames){
+        this.ProductNames = ProductNames;
     }
     
     public stocks() {
         initComponents();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         Connect();
+        SearchProductNo();
+        Fetch();
     }
     
     Connection con;
     PreparedStatement pst;
+    ResultSet rs;
     
     public void Connect(){
         try {
-            Class.forName("com.mysql.jdbc.Driver");
-            con = DriverManager.getConnection("jbdc:mysql://localhost:3306/stocks","root","");
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/coffeetea","root","");
             
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
+        } catch (ClassNotFoundException | SQLException ex) {
             Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    
+    public void SearchProductNo(){
+        try {
+            pst = con.prepareStatement("SELECT Product_ID FROM stocks");
+            rs = pst.executeQuery();
+            productID.removeAllItems();
+            while(rs.next()){
+                productID.addItem(rs.getString(1));
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+   
+    public void Fetch(){
+        try {
+            int q;
+            pst = con.prepareStatement("SELECT * FROM stocks");
+            rs = pst.executeQuery();
+            ResultSetMetaData rss = rs.getMetaData();
+            q = rss.getColumnCount();
+            
+            DefaultTableModel df = (DefaultTableModel)stocksTbl.getModel();
+            df.setRowCount(0);
+            while(rs.next()){
+                Vector v2 = new Vector();
+                for(int a = 1; a <= q; a++){
+                    v2.add(rs.getString("Product_ID"));
+                    v2.add(rs.getString("ProductName"));
+                    v2.add(rs.getString("ProductPrice"));
+                    v2.add(rs.getString("ProductQuantity"));
+                }
+                df.addRow(v2);
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    
     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -58,12 +103,11 @@ public class stocks extends javax.swing.JFrame {
         btnAdd = new javax.swing.JButton();
         btnUpdate = new javax.swing.JButton();
         btnDelete = new javax.swing.JButton();
-        btnNew = new javax.swing.JButton();
         lblProdID = new javax.swing.JLabel();
-        jComboBox1 = new javax.swing.JComboBox<>();
+        productID = new javax.swing.JComboBox<>();
         btnSearch = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
+        stocksTbl = new javax.swing.JTable();
         btnBack = new javax.swing.JButton();
         lblBGkape = new javax.swing.JLabel();
 
@@ -79,17 +123,17 @@ public class stocks extends javax.swing.JFrame {
         labelPRONAME.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPRONAME.setForeground(new java.awt.Color(255, 255, 255));
         labelPRONAME.setText("PRODUCT NAME:");
-        jPanel1.add(labelPRONAME, new org.netbeans.lib.awtextra.AbsoluteConstraints(68, 140, 160, 26));
+        jPanel1.add(labelPRONAME, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 190, 160, 26));
 
         labelPROprice.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPROprice.setForeground(new java.awt.Color(255, 255, 255));
         labelPROprice.setText("PRODUCT PRICE:");
-        jPanel1.add(labelPROprice, new org.netbeans.lib.awtextra.AbsoluteConstraints(68, 222, 160, 26));
+        jPanel1.add(labelPROprice, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 270, 160, 26));
 
         labelPROQTY.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPROQTY.setForeground(new java.awt.Color(255, 255, 255));
         labelPROQTY.setText("PRODUCT QTY:");
-        jPanel1.add(labelPROQTY, new org.netbeans.lib.awtextra.AbsoluteConstraints(68, 309, 160, 26));
+        jPanel1.add(labelPROQTY, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 350, 160, 26));
 
         txtPName.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         txtPName.addActionListener(new java.awt.event.ActionListener() {
@@ -97,7 +141,7 @@ public class stocks extends javax.swing.JFrame {
                 txtPNameActionPerformed(evt);
             }
         });
-        jPanel1.add(txtPName, new org.netbeans.lib.awtextra.AbsoluteConstraints(267, 140, 304, -1));
+        jPanel1.add(txtPName, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 190, 304, -1));
 
         txtPPrice.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         txtPPrice.addActionListener(new java.awt.event.ActionListener() {
@@ -105,46 +149,66 @@ public class stocks extends javax.swing.JFrame {
                 txtPPriceActionPerformed(evt);
             }
         });
-        jPanel1.add(txtPPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(267, 220, 304, -1));
+        jPanel1.add(txtPPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 270, 304, -1));
 
         txtPQty.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        jPanel1.add(txtPQty, new org.netbeans.lib.awtextra.AbsoluteConstraints(267, 304, 304, -1));
+        jPanel1.add(txtPQty, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 350, 304, -1));
 
+        btnAdd.setBackground(new java.awt.Color(0, 153, 255));
         btnAdd.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnAdd.setForeground(new java.awt.Color(255, 255, 255));
         btnAdd.setText("ADD");
         btnAdd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnAddActionPerformed(evt);
             }
         });
-        jPanel1.add(btnAdd, new org.netbeans.lib.awtextra.AbsoluteConstraints(68, 406, 116, 39));
+        jPanel1.add(btnAdd, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 430, 116, 39));
 
+        btnUpdate.setBackground(new java.awt.Color(0, 153, 255));
         btnUpdate.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnUpdate.setForeground(new java.awt.Color(255, 255, 255));
         btnUpdate.setText("UPDATE");
-        jPanel1.add(btnUpdate, new org.netbeans.lib.awtextra.AbsoluteConstraints(196, 406, 116, 39));
+        btnUpdate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnUpdateActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnUpdate, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 430, 116, 39));
 
+        btnDelete.setBackground(new java.awt.Color(255, 0, 51));
         btnDelete.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnDelete.setForeground(new java.awt.Color(255, 255, 255));
         btnDelete.setText("DELETE");
-        jPanel1.add(btnDelete, new org.netbeans.lib.awtextra.AbsoluteConstraints(324, 406, 116, 39));
-
-        btnNew.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        btnNew.setText("NEW");
-        jPanel1.add(btnNew, new org.netbeans.lib.awtextra.AbsoluteConstraints(452, 406, 119, 39));
+        btnDelete.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnDeleteActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnDelete, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 430, 116, 39));
 
         lblProdID.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         lblProdID.setForeground(new java.awt.Color(255, 255, 255));
         lblProdID.setText("PRODUCT ID:");
-        jPanel1.add(lblProdID, new org.netbeans.lib.awtextra.AbsoluteConstraints(330, 530, 120, 26));
+        jPanel1.add(lblProdID, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 100, 120, 26));
 
-        jComboBox1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-        jPanel1.add(jComboBox1, new org.netbeans.lib.awtextra.AbsoluteConstraints(461, 531, 110, -1));
+        productID.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        productID.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel1.add(productID, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 100, 110, -1));
 
+        btnSearch.setBackground(new java.awt.Color(0, 153, 255));
         btnSearch.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnSearch.setForeground(new java.awt.Color(255, 255, 255));
         btnSearch.setText("SEARCH");
-        jPanel1.add(btnSearch, new org.netbeans.lib.awtextra.AbsoluteConstraints(481, 579, 90, 30));
+        btnSearch.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSearchActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnSearch, new org.netbeans.lib.awtextra.AbsoluteConstraints(370, 100, 90, 40));
 
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+        stocksTbl.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        stocksTbl.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {null, null, null, null},
                 {null, null, null, null},
@@ -152,14 +216,16 @@ public class stocks extends javax.swing.JFrame {
                 {null, null, null, null}
             },
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "PRODUCT_ID", "PRODUCT NAME", "PRODUCT PRICE", "PRODUCT QUANTITY"
             }
         ));
-        jScrollPane1.setViewportView(jTable1);
+        jScrollPane1.setViewportView(stocksTbl);
 
         jPanel1.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(631, 140, 853, 475));
 
+        btnBack.setBackground(new java.awt.Color(0, 153, 255));
         btnBack.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnBack.setForeground(new java.awt.Color(255, 255, 255));
         btnBack.setText("BACK");
         btnBack.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         btnBack.addActionListener(new java.awt.event.ActionListener() {
@@ -169,7 +235,7 @@ public class stocks extends javax.swing.JFrame {
         });
         jPanel1.add(btnBack, new org.netbeans.lib.awtextra.AbsoluteConstraints(1365, 695, 119, 39));
 
-        lblBGkape.setIcon(new javax.swing.ImageIcon("C:\\Users\\ronia\\Downloads\\kapebg.jpg")); // NOI18N
+        lblBGkape.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Stocks/bgStock (1).jpg"))); // NOI18N
         lblBGkape.setText("jLabel1");
         jPanel1.add(lblBGkape, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 1610, 920));
 
@@ -201,14 +267,14 @@ public class stocks extends javax.swing.JFrame {
     private void btnAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddActionPerformed
         
         try {
-            String pname = txtPName.getText();
-            String price = txtPPrice.getText();
-            String qty = txtPQty.getText();
+            ProductNames = txtPName.getText();
+            ProductPrices = txtPPrice.getText();
+            ProductsQuantity = txtPQty.getText();
             
-            pst = con.prepareStatement("INSERT INTO product_tbl (pname,price,qty)VALUES(?,?,?)");
-            pst.setString(1, pname);
-            pst.setString(2, price);
-            pst.setString(3, qty);
+            pst = con.prepareStatement("INSERT INTO stocks (ProductName, ProductPrice, ProductQuantity) VALUES(?,?,?)");
+            pst.setString(1, ProductNames);
+            pst.setString(2, ProductPrices);
+            pst.setString(3, ProductsQuantity);
             
             int k = pst.executeUpdate();
             
@@ -217,9 +283,13 @@ public class stocks extends javax.swing.JFrame {
                 txtPName.setText("");
                 txtPPrice.setText("");
                 txtPQty.setText("");       
-            } else{
+                Fetch();
+                SearchProductNo();
+            } 
+            else{
                 JOptionPane.showMessageDialog(this, "Record Failed to Save!");
             }
+            
         } catch (SQLException ex) {
             Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -228,6 +298,82 @@ public class stocks extends javax.swing.JFrame {
     private void txtPNameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPNameActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_txtPNameActionPerformed
+
+    private void btnSearchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSearchActionPerformed
+        try {
+            String pid = productID.getSelectedItem().toString();
+            
+            pst = con.prepareStatement("SELECT * FROM stocks WHERE Product_ID = ?");
+            pst.setString(1, pid);
+            rs = pst.executeQuery();
+            
+            if(rs.next() == true){
+                txtPName.setText(rs.getString(2));
+                txtPPrice.setText(rs.getString(3));
+                txtPQty.setText(rs.getString(4));
+            }
+            else{
+                JOptionPane.showMessageDialog(this, "No record found!");
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnSearchActionPerformed
+
+    private void btnUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnUpdateActionPerformed
+        try {
+            String pname = txtPName.getText();
+            String price = txtPPrice.getText();
+            String qty = txtPQty.getText();
+            String pid = productID.getSelectedItem().toString();
+            
+            pst = con.prepareStatement("UPDATE stocks SET ProductName=?, ProductPrice=?, ProductQuantity=? WHERE Product_ID=?");
+            pst.setString(1, pname);
+            pst.setString(2, price);
+            pst.setString(3, qty);
+            pst.setString(4, pid);
+            
+            int k=pst.executeUpdate();
+            if(k==1){
+                JOptionPane.showMessageDialog(this, "Record has been updated.");
+                txtPName.setText("");
+                txtPPrice.setText("");
+                txtPQty.setText("");
+                txtPName.requestFocus();
+                Fetch();
+                SearchProductNo();
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnUpdateActionPerformed
+
+    private void btnDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteActionPerformed
+        try {
+            String pid = productID.getSelectedItem().toString();
+            pst=con.prepareStatement("DELETE FROM stocks WHERE Product_ID=? ");
+            pst.setString(1,pid);
+            
+            int k =pst.executeUpdate();
+            if(k==1){
+                JOptionPane.showMessageDialog(this,"Record has been deleted.");
+                txtPName.setText("");
+                txtPPrice.setText("");
+                txtPQty.setText("");
+                txtPName.requestFocus();
+                Fetch();
+                SearchProductNo();
+
+            }
+            else{
+                JOptionPane.showMessageDialog(this,"Record failed to delete.");
+
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnDeleteActionPerformed
  
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
@@ -265,19 +411,18 @@ public class stocks extends javax.swing.JFrame {
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnBack;
     private javax.swing.JButton btnDelete;
-    private javax.swing.JButton btnNew;
     private javax.swing.JButton btnSearch;
     private javax.swing.JButton btnUpdate;
-    private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabelSTOCKMAN;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTable jTable1;
     private javax.swing.JLabel labelPRONAME;
     private javax.swing.JLabel labelPROQTY;
     private javax.swing.JLabel labelPROprice;
     private javax.swing.JLabel lblBGkape;
     private javax.swing.JLabel lblProdID;
+    private javax.swing.JComboBox<String> productID;
+    private javax.swing.JTable stocksTbl;
     private javax.swing.JTextField txtPName;
     private javax.swing.JTextField txtPPrice;
     private javax.swing.JTextField txtPQty;
