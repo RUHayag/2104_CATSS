@@ -1,15 +1,12 @@
 
 package menu;
 
-
-import javax.swing.JFrame;
-import login.login;
 import java.sql.*;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import login.login;
 import Payment.payment;
-import Stocks.stocks;
-
 
 public class menu extends javax.swing.JFrame {
 
@@ -65,13 +62,13 @@ public class menu extends javax.swing.JFrame {
     }   
     
     private void addOrderToDatabase(String productName, int quantity, String size) {
-        double price = getProductPrice(productName); // Get the base price
-
-    // Adjust price based on size
+        double price = getProductPrice(productName);
+        
         if (size.equalsIgnoreCase("L")) {
-            price += 10; // Add 10 for large size
-        } else if (size.equalsIgnoreCase("B")) {
-            price += 25; // Add 25 for box size (for tea)
+            price += 10;
+        } 
+        else if (size.equalsIgnoreCase("B")) {
+            price += 25;
         }
 
         String insertOrderQuery = "INSERT INTO cart (Username, Orders, Quantity, Size, Price) VALUES (?, ?, ?, ?, ?)";
@@ -82,7 +79,7 @@ public class menu extends javax.swing.JFrame {
             insertStmt.setString(2, productName);
             insertStmt.setInt(3, quantity);
             insertStmt.setString(4, size);
-            insertStmt.setDouble(5, price); // Include adjusted price
+            insertStmt.setDouble(5, price);
             insertStmt.executeUpdate();
 
             JOptionPane.showMessageDialog(this, "Order added to cart successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -92,68 +89,130 @@ public class menu extends javax.swing.JFrame {
         }
     }
     
-    //walaa pa ito
-    private void deductQuantityFromDatabase(String productName, String size, int quantity) {
-        String updateQuery = "UPDATE stocks SET ProductQuantity = ProductQuantity - ? WHERE ProductName = ?";
-        String insertOrderQuery = "INSERT INTO orders (Orders, Size, Quantity) VALUES (?, ?, ?)";
-        try (Connection conn = connectToDatabase();
-            PreparedStatement updateStmt = conn.prepareStatement(updateQuery);
-            PreparedStatement insertStmt = conn.prepareStatement(insertOrderQuery)) {
-         
-        // Deduct quantity
-            updateStmt.setInt(1, quantity);
-            updateStmt.setString(2, productName);
-            
-            int rowsAffected = updateStmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-            // Record the order
-                insertStmt.setString(1, productName);
-                insertStmt.setString(2, size);
-                insertStmt.setInt(3, quantity);
-                insertStmt.executeUpdate();
-                JOptionPane.showMessageDialog(this, "Order placed successfully! Quantity updated.", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to update quantity. Please check the stock.", "Update Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Database error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
     private void displayCartItems() {
         DefaultTableModel model = (DefaultTableModel) CartTbl.getModel();
-        model.setRowCount(0); // Clear existing rows
-
-        String query = "SELECT * FROM cart WHERE Username = ?"; // Adjust query to filter by user
+        model.setRowCount(0);
+        
+        String query = "SELECT * FROM cart WHERE Username = ?";
+        double totalAmount = 0.0;
         try (Connection conn = connectToDatabase();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
-            pstmt.setString(1, user_name); // Set the current user's name
+            pstmt.setString(1, user_name);
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
                 String productName = rs.getString("Orders");
                 int quantity = rs.getInt("Quantity");
                 String size = rs.getString("Size");
-                double price = rs.getDouble("Price"); // Fetch the adjusted price from the database
+                double price = rs.getDouble("Price");
 
-                // Calculate total
-                double total = price * quantity;
-
-                // Add a row to the table model
-                model.addRow(new Object[]{productName, price, quantity, size, total}); // Add total to the new column
+                double subtotal = price * quantity;
+                totalAmount += subtotal;
+                
+                model.addRow(new Object[]{productName, price, quantity, size, subtotal});
             }
+
+            txtTOTAL.setText("₱ " + String.format("%.2f", totalAmount));
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Error retrieving cart items: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    
+    private void updateCartItems() {
+        String productName = PRODUCTNAME.getText().trim();
+        String quantityStr = QUANTITY.getText().trim();
+        String size = SIZE.getText().trim();
+
+        // Validate input
+        if (productName.isEmpty() || quantityStr.isEmpty() || size.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter product name, quantity, and size.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int quantity;
+        try {
+            quantity = Integer.parseInt(quantityStr);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid quantity.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Get the current price and size of the product from the database
+        String query = "SELECT Price, Size FROM cart WHERE Username = ? AND Orders = ?";
+        double currentPrice = 0.0;
+        String currentSize = "";
+
+        try (Connection conn = connectToDatabase();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, user_name);
+            pstmt.setString(2, productName);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                currentPrice = rs.getDouble("Price");
+                currentSize = rs.getString("Size");
+            } else {
+                JOptionPane.showMessageDialog(this, "No order found for the product: " + productName, "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        double newPrice = currentPrice;
+
+        if (size.equalsIgnoreCase("L")) {
+            newPrice += 10;
+        } else if (size.equalsIgnoreCase("M")) {
+            if (currentSize.equalsIgnoreCase("L")) {
+                newPrice -= 10;
+            }
+        } 
+        
+        if (size.equalsIgnoreCase("B")) {
+            newPrice += 25;
+        } else if (size.equalsIgnoreCase("P")) {
+            if (currentSize.equalsIgnoreCase("B")) {
+                newPrice -= 25;
+            }
+        }
+
+        // Update the cart in the database
+        String updateQuery = "UPDATE cart SET Quantity = ?, Size = ?, Price = ? WHERE Username = ? AND Orders = ?";
+        try (Connection conn = connectToDatabase();
+             PreparedStatement pstmt = conn.prepareStatement(updateQuery)) {
+            pstmt.setInt(1, quantity);
+            pstmt.setString(2, size);
+            pstmt.setDouble(3, newPrice);
+            pstmt.setString(4, user_name);
+            pstmt.setString(5, productName);
+
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                JOptionPane.showMessageDialog(this, "Cart updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                displayCartItems();
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to update cart. Please check the product name.", "Update Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+
+        // Clear input fields
+        PRODUCTNAME.setText("");
+        QUANTITY.setText("");
+        SIZE.setText("");
+    }
 
     private double getProductPrice(String productName) {
         double price = 0.0;
-        String query = "SELECT ProductPrice FROM stocks WHERE ProductName = ?"; // Adjust based on your schema
+        String query = "SELECT ProductPrice FROM stocks WHERE ProductName = ?";
         try (Connection conn = connectToDatabase();
             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, productName);
@@ -174,13 +233,13 @@ public class menu extends javax.swing.JFrame {
             String deleteQuery = "DELETE FROM cart WHERE Username = ?";
             try (Connection conn = connectToDatabase();
                  PreparedStatement pstmt = conn.prepareStatement(deleteQuery)) {
-                pstmt.setString(1, user_name); // Assuming user_name is set when the user logs in
+                pstmt.setString(1, user_name);
 
                 int rowsAffected = pstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
                     JOptionPane.showMessageDialog(this, "All orders removed from cart successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    displayCartItems(); // Refresh the cart display
+                    displayCartItems();
                 } else {
                     JOptionPane.showMessageDialog(this, "No orders found in the cart.", "Remove Error", JOptionPane.INFORMATION_MESSAGE);
                 }
@@ -191,29 +250,53 @@ public class menu extends javax.swing.JFrame {
         }
     }
     
-    private void fetchAndShowCartData() {
-    String query = "SELECT * FROM cart WHERE Username = ?"; // Adjust query to filter by user
-    try (Connection conn = connectToDatabase();
-         PreparedStatement pstmt = conn.prepareStatement(query)) {
-        pstmt.setString(1, user_name); // Set the current user's name
-        ResultSet rs = pstmt.executeQuery();
+    private void insertToOrders(){
+        String query = "INSERT INTO orders (Username, Orders, Quantity, Size, Price, Subtotal) VALUES (?, ?, ?, ?, ?, ?)";
+    
+        try (Connection conn = connectToDatabase();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
 
-        while (rs.next()) {
-            String productName = rs.getString("Orders");
-            double price = rs.getDouble("Price");
-            int quantity = rs.getInt("Quantity");
-            String size = rs.getString("Size");
-            double total = price * quantity;
+            DefaultTableModel model = (DefaultTableModel) CartTbl.getModel();
 
-            // Create and show the payment frame with the cart data
-            payment paymentFrame = new payment(productName, price, quantity, size, total);
-            paymentFrame.setVisible(true);
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String productName = model.getValueAt(i, 0).toString(); // Product Name
+                double price = Double.parseDouble(model.getValueAt(i, 1).toString()); // Price
+                int quantity = Integer.parseInt(model.getValueAt(i, 2).toString()); // Quantity
+                String size = model.getValueAt(i, 3).toString(); // Size
+                double subtotal = Double.parseDouble(model.getValueAt(i, 4).toString()); // Subtotal
+
+                // Set parameters for the prepared statement
+                pstmt.setString(1, user_name);
+                pstmt.setString(2, productName);
+                pstmt.setInt(3, quantity);
+                pstmt.setString(4, size);
+                pstmt.setDouble(5, price);
+                pstmt.setDouble(6, subtotal);
+
+                pstmt.executeUpdate(); // Execute the insert
+            }
+
+            JOptionPane.showMessageDialog(this, "Orders placed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-    } catch (SQLException e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Error retrieving cart items: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
     }
-}
+    
+    private void updateStocks(String productName, int quantity) {
+        String query = "UPDATE stocks SET ProductQuantity = ProductQuantity - ? WHERE ProductName = ?";
+        try (Connection conn = connectToDatabase();
+            PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, quantity);
+            pstmt.setString(2, productName);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database error while updating stock: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -233,6 +316,7 @@ public class menu extends javax.swing.JFrame {
         btnCART = new javax.swing.JButton();
         labelMenu = new javax.swing.JLabel();
         btnCHKStocks = new javax.swing.JButton();
+        btnEXIT1 = new javax.swing.JButton();
         panelCOFFEEMenu = new javax.swing.JPanel();
         btnCoffee1 = new javax.swing.JButton();
         btnCoffee2 = new javax.swing.JButton();
@@ -318,7 +402,6 @@ public class menu extends javax.swing.JFrame {
         txtSize3 = new javax.swing.JTextField();
         btnAddPastry = new javax.swing.JButton();
         panelCART = new javax.swing.JPanel();
-        btnBACK4 = new javax.swing.JButton();
         btnPayment = new javax.swing.JButton();
         jScrollPane3 = new javax.swing.JScrollPane();
         CartTbl = new javax.swing.JTable();
@@ -333,8 +416,13 @@ public class menu extends javax.swing.JFrame {
         btnCartAdd = new javax.swing.JButton();
         btnSearchPname = new javax.swing.JButton();
         btnCartRemoveAll = new javax.swing.JButton();
+        labelTotal = new javax.swing.JLabel();
+        txtTOTAL = new javax.swing.JTextField();
+        labelYourOrder = new javax.swing.JLabel();
+        btnEXIT = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("MENU");
 
         jMenuPanel1.setBackground(new java.awt.Color(111, 78, 55));
 
@@ -424,6 +512,17 @@ public class menu extends javax.swing.JFrame {
             }
         });
 
+        btnEXIT1.setBackground(new java.awt.Color(255, 0, 51));
+        btnEXIT1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        btnEXIT1.setForeground(new java.awt.Color(255, 255, 255));
+        btnEXIT1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/menu/icons8-fire-exit-30.png"))); // NOI18N
+        btnEXIT1.setText("EXIT");
+        btnEXIT1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEXIT1ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout panelMenuLayout = new javax.swing.GroupLayout(panelMenu);
         panelMenu.setLayout(panelMenuLayout);
         panelMenuLayout.setHorizontalGroup(
@@ -446,13 +545,17 @@ public class menu extends javax.swing.JFrame {
                         .addComponent(btnPastry, javax.swing.GroupLayout.PREFERRED_SIZE, 206, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(360, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelMenuLayout.createSequentialGroup()
-                .addGap(0, 703, Short.MAX_VALUE)
-                .addGroup(panelMenuLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(btnCHKStocks, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelMenuLayout.createSequentialGroup()
+                .addGroup(panelMenuLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(panelMenuLayout.createSequentialGroup()
+                        .addGap(0, 703, Short.MAX_VALUE)
                         .addComponent(labelMenu)
                         .addGap(612, 612, 612)
-                        .addComponent(btnCART, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(btnCART, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(panelMenuLayout.createSequentialGroup()
+                        .addGap(92, 92, 92)
+                        .addComponent(btnEXIT1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnCHKStocks)))
                 .addGap(151, 151, 151))
         );
         panelMenuLayout.setVerticalGroup(
@@ -475,9 +578,11 @@ public class menu extends javax.swing.JFrame {
                     .addComponent(labelCoffee)
                     .addComponent(labelTea)
                     .addComponent(labelPastry))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 54, Short.MAX_VALUE)
-                .addComponent(btnCHKStocks, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(55, 55, 55))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 39, Short.MAX_VALUE)
+                .addGroup(panelMenuLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnCHKStocks, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnEXIT1, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(69, 69, 69))
         );
 
         tpaneMENU.addTab("MENU", panelMenu);
@@ -591,7 +696,6 @@ public class menu extends javax.swing.JFrame {
 
         txtQuanCoffee.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         txtQuanCoffee.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtQuanCoffee.setText("0");
         txtQuanCoffee.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtQuanCoffeeActionPerformed(evt);
@@ -897,7 +1001,6 @@ public class menu extends javax.swing.JFrame {
 
         txtQuanTea.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         txtQuanTea.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtQuanTea.setText("0");
         txtQuanTea.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtQuanTeaActionPerformed(evt);
@@ -1200,7 +1303,6 @@ public class menu extends javax.swing.JFrame {
 
         txtQuanPastry.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         txtQuanPastry.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtQuanPastry.setText("0");
         txtQuanPastry.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtQuanPastryActionPerformed(evt);
@@ -1400,20 +1502,10 @@ public class menu extends javax.swing.JFrame {
 
         tpaneMENU.addTab("PASTRY", panelPASTRYMenu);
 
-        btnBACK4.setBackground(new java.awt.Color(51, 153, 255));
-        btnBACK4.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        btnBACK4.setForeground(new java.awt.Color(255, 255, 255));
-        btnBACK4.setText("BACK");
-        btnBACK4.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnBACK4ActionPerformed(evt);
-            }
-        });
-
         btnPayment.setBackground(new java.awt.Color(102, 255, 102));
         btnPayment.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         btnPayment.setForeground(new java.awt.Color(255, 255, 255));
-        btnPayment.setText("PAY HERE");
+        btnPayment.setText("PAYMENT");
         btnPayment.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnPaymentActionPerformed(evt);
@@ -1437,8 +1529,12 @@ public class menu extends javax.swing.JFrame {
         cartID.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         cartID.setText("PRODUCT NAME:");
 
+        PRODUCTNAME.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+
         cartID2.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         cartID2.setText("QUANTITY :");
+
+        QUANTITY.setHorizontalAlignment(javax.swing.JTextField.CENTER);
 
         btnCartUpdate.setBackground(new java.awt.Color(51, 153, 255));
         btnCartUpdate.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -1463,10 +1559,12 @@ public class menu extends javax.swing.JFrame {
         cartID3.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         cartID3.setText("SIZE : ");
 
+        SIZE.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+
         btnCartAdd.setBackground(new java.awt.Color(51, 153, 255));
         btnCartAdd.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnCartAdd.setForeground(new java.awt.Color(255, 255, 255));
-        btnCartAdd.setText("ADD");
+        btnCartAdd.setText("ADD ORDERS");
         btnCartAdd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCartAddActionPerformed(evt);
@@ -1493,80 +1591,115 @@ public class menu extends javax.swing.JFrame {
             }
         });
 
+        labelTotal.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        labelTotal.setText("TOTAL:");
+
+        txtTOTAL.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+
+        labelYourOrder.setFont(new java.awt.Font("Segoe UI", 1, 36)); // NOI18N
+        labelYourOrder.setText("YOUR ORDER");
+
+        btnEXIT.setBackground(new java.awt.Color(255, 0, 51));
+        btnEXIT.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        btnEXIT.setForeground(new java.awt.Color(255, 255, 255));
+        btnEXIT.setIcon(new javax.swing.ImageIcon(getClass().getResource("/menu/icons8-fire-exit-30.png"))); // NOI18N
+        btnEXIT.setText("EXIT");
+        btnEXIT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEXITActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout panelCARTLayout = new javax.swing.GroupLayout(panelCART);
         panelCART.setLayout(panelCARTLayout);
         panelCARTLayout.setHorizontalGroup(
             panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelCARTLayout.createSequentialGroup()
+                .addContainerGap(92, Short.MAX_VALUE)
                 .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(panelCARTLayout.createSequentialGroup()
-                        .addGap(57, 57, 57)
-                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cartID)
-                            .addComponent(cartID2)
-                            .addComponent(cartID3)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelCARTLayout.createSequentialGroup()
+                        .addComponent(labelYourOrder)
+                        .addGap(559, 559, 559))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelCARTLayout.createSequentialGroup()
+                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(panelCARTLayout.createSequentialGroup()
                                 .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                        .addComponent(SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, 195, Short.MAX_VALUE)
-                                        .addComponent(QUANTITY)
-                                        .addComponent(PRODUCTNAME))
+                                    .addComponent(cartID)
+                                    .addComponent(cartID2)
+                                    .addComponent(QUANTITY, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(cartID3)
+                                    .addComponent(SIZE, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(panelCARTLayout.createSequentialGroup()
+                                        .addComponent(PRODUCTNAME, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGap(37, 37, 37)
+                                        .addComponent(btnSearchPname, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))
                                     .addGroup(panelCARTLayout.createSequentialGroup()
                                         .addComponent(btnCartUpdate)
-                                        .addGap(18, 18, 18)
-                                        .addComponent(btnCartAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                .addGap(18, 18, 18)
-                                .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(btnCartRemove)
-                                    .addComponent(btnSearchPname)))))
-                    .addGroup(panelCARTLayout.createSequentialGroup()
-                        .addGap(147, 147, 147)
-                        .addComponent(btnCartRemoveAll)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 113, Short.MAX_VALUE)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 865, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(54, 54, 54)
-                .addComponent(btnBACK4)
-                .addGap(177, 177, 177))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelCARTLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(btnPayment, javax.swing.GroupLayout.PREFERRED_SIZE, 154, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(155, 155, 155))
+                                        .addGap(26, 26, 26)
+                                        .addComponent(btnCartRemove)
+                                        .addGap(29, 29, 29)
+                                        .addComponent(btnCartRemoveAll))
+                                    .addGroup(panelCARTLayout.createSequentialGroup()
+                                        .addGap(94, 94, 94)
+                                        .addComponent(btnCartAdd)))
+                                .addGap(52, 52, 52))
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, panelCARTLayout.createSequentialGroup()
+                                .addComponent(btnEXIT)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 347, Short.MAX_VALUE)))
+                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 865, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(labelTotal)
+                                .addGroup(panelCARTLayout.createSequentialGroup()
+                                    .addComponent(txtTOTAL, javax.swing.GroupLayout.PREFERRED_SIZE, 127, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGap(18, 18, 18)
+                                    .addComponent(btnPayment, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGap(241, 241, 241))))
         );
         panelCARTLayout.setVerticalGroup(
             panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelCARTLayout.createSequentialGroup()
                 .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panelCARTLayout.createSequentialGroup()
-                        .addGap(37, 37, 37)
-                        .addComponent(btnPayment, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(92, 92, 92)
+                        .addGap(104, 104, 104)
                         .addComponent(cartID)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(PRODUCTNAME, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(btnSearchPname))
-                        .addGap(27, 27, 27)
+                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(btnSearchPname, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(PRODUCTNAME, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
                         .addComponent(cartID2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(QUANTITY, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(39, 39, 39)
+                        .addGap(18, 18, 18)
                         .addComponent(cartID3)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGap(18, 18, 18)
                         .addComponent(SIZE, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(44, 44, 44)
+                        .addGap(29, 29, 29)
                         .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(btnCartUpdate)
-                            .addComponent(btnCartAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(btnCartRemove))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(btnCartRemoveAll)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 78, Short.MAX_VALUE))
+                            .addComponent(btnCartRemove)
+                            .addComponent(btnCartRemoveAll))
+                        .addGap(29, 29, 29)
+                        .addComponent(btnCartAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(panelCARTLayout.createSequentialGroup()
+                        .addGap(43, 43, 43)
+                        .addComponent(labelYourOrder)
+                        .addGap(18, 18, 18)
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 406, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panelCARTLayout.createSequentialGroup()
+                        .addGap(68, 68, 68)
+                        .addComponent(labelTotal)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(panelCARTLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(txtTOTAL, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(btnPayment, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(77, 77, 77))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelCARTLayout.createSequentialGroup()
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 406, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(40, 40, 40)))
-                .addComponent(btnBACK4, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(52, 52, 52))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnEXIT, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(87, 87, 87))))
         );
 
         tpaneMENU.addTab("CART", panelCART);
@@ -1613,7 +1746,6 @@ public class menu extends javax.swing.JFrame {
 
     private void btnCHKStocksActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCHKStocksActionPerformed
         login loginFrame = new login();
-
         loginFrame.setVisible(true);
     }//GEN-LAST:event_btnCHKStocksActionPerformed
 
@@ -1738,56 +1870,35 @@ public class menu extends javax.swing.JFrame {
     }//GEN-LAST:event_btnBACK3ActionPerformed
 
     private void btnPaymentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPaymentActionPerformed
-        fetchAndShowCartData();
-        
+        DefaultTableModel model = (DefaultTableModel) CartTbl.getModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Select order first!", "Empty Cart", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        insertToOrders();
+        for (int i = 0; i < model.getRowCount(); i++) {
+            String productName = model.getValueAt(i, 0).toString();
+            int quantity = Integer.parseInt(model.getValueAt(i, 2).toString());
+            updateStocks(productName, quantity);
+        }
+
+        String totalText = txtTOTAL.getText().replace("₱ ", "").replace(",", "").trim();
+        double totalAmount;
+        try {
+            totalAmount = Double.parseDouble(totalText);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Invalid total amount.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        payment paymentFrame = new payment(user_name, totalAmount);
+        paymentFrame.setVisible(true);
+        this.dispose();
     }//GEN-LAST:event_btnPaymentActionPerformed
 
-    private void btnBACK4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBACK4ActionPerformed
-        tpaneMENU.setSelectedIndex(0);
-    }//GEN-LAST:event_btnBACK4ActionPerformed
-
     private void btnCartUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCartUpdateActionPerformed
-        String productName = PRODUCTNAME.getText().trim();
-        String quantityStr = QUANTITY.getText().trim();
-        String size = SIZE.getText().trim();
-
-        if (productName.isEmpty() || quantityStr.isEmpty() || size.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter product name, quantity, and size.", "Input Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        int quantity;
-        try {
-            quantity = Integer.parseInt(quantityStr);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid quantity.", "Input Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        String updateQuery = "UPDATE cart SET Quantity = ?, Size = ? WHERE Username = ? AND Orders = ?";
-        try (Connection conn = connectToDatabase();
-             PreparedStatement pstmt = conn.prepareStatement(updateQuery)) {
-            pstmt.setInt(1, quantity);
-            pstmt.setString(2, size);
-            pstmt.setString(3, user_name); // Assuming user_name is set when the user logs in
-            pstmt.setString(4, productName);
-
-            int rowsAffected = pstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                JOptionPane.showMessageDialog(this, "Cart updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                displayCartItems(); // Refresh the cart display
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to update cart. Please check the product name.", "Update Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Database error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-        
-        PRODUCTNAME.setText("");
-        QUANTITY.setText("");
-        SIZE.setText("");
+        updateCartItems();
     }//GEN-LAST:event_btnCartUpdateActionPerformed
 
     private void btnCartRemoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCartRemoveActionPerformed
@@ -1801,14 +1912,14 @@ public class menu extends javax.swing.JFrame {
         String deleteQuery = "DELETE FROM cart WHERE Username = ? AND Orders = ?";
         try (Connection conn = connectToDatabase();
              PreparedStatement pstmt = conn.prepareStatement(deleteQuery)) {
-            pstmt.setString(1, user_name); // Assuming user_name is set when the user logs in
+            pstmt.setString(1, user_name);
             pstmt.setString(2, productName);
 
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
                 JOptionPane.showMessageDialog(this, "Product removed from cart successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                displayCartItems(); // Refresh the cart display
+                displayCartItems();
             } else {
                 JOptionPane.showMessageDialog(this, "No product found with that name in the cart.", "Remove Error", JOptionPane.INFORMATION_MESSAGE);
             }
@@ -1848,11 +1959,10 @@ public class menu extends javax.swing.JFrame {
             return;
         }
 
-    // Instead of deducting, insert the order into the database
         addOrderToDatabase(productName, quantity, size);
         
         txtTeaName.setText("");
-        txtQuanTea.setText("0");
+        txtQuanTea.setText("");
         txtSize2.setText("");
     }//GEN-LAST:event_btnAddTeaActionPerformed
 
@@ -1889,7 +1999,7 @@ public class menu extends javax.swing.JFrame {
         addOrderToDatabase(productName, quantity, size);
         
         txtCoffeeName.setText("");
-        txtQuanCoffee.setText("0");
+        txtQuanCoffee.setText("");
         txtSize.setText("");
     }//GEN-LAST:event_btnAddCoffeeActionPerformed
 
@@ -1923,11 +2033,10 @@ public class menu extends javax.swing.JFrame {
             return;
         }
 
-    // Instead of deducting, insert the order into the database
         addOrderToDatabase(productName, quantity, size);
         
         txtPastryName.setText("");
-        txtQuanPastry.setText("0");
+        txtQuanPastry.setText("");
         txtSize3.setText("");
     }//GEN-LAST:event_btnAddPastryActionPerformed
 
@@ -1946,7 +2055,7 @@ public class menu extends javax.swing.JFrame {
         String query = "SELECT Quantity, Size FROM cart WHERE Username = ? AND Orders = ?";
         try (Connection conn = connectToDatabase();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setString(1, user_name); // Assuming user_name is set when the user logs in
+            pstmt.setString(1, user_name);
             pstmt.setString(2, productName);
 
             ResultSet rs = pstmt.executeQuery();
@@ -1969,6 +2078,17 @@ public class menu extends javax.swing.JFrame {
     private void btnCartRemoveAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCartRemoveAllActionPerformed
         removeAllOrdersFromCart();
     }//GEN-LAST:event_btnCartRemoveAllActionPerformed
+
+    private void btnEXITActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEXITActionPerformed
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to exit? :(", "Confirm Exit", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            System.exit(0);
+        }
+    }//GEN-LAST:event_btnEXITActionPerformed
+
+    private void btnEXIT1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEXIT1ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnEXIT1ActionPerformed
 
     /**
      * @param args the command line arguments
@@ -2016,7 +2136,6 @@ public class menu extends javax.swing.JFrame {
     private javax.swing.JButton btnBACK1;
     private javax.swing.JButton btnBACK2;
     private javax.swing.JButton btnBACK3;
-    private javax.swing.JButton btnBACK4;
     private javax.swing.JButton btnCART;
     private javax.swing.JButton btnCHKStocks;
     private javax.swing.JButton btnCartAdd;
@@ -2030,6 +2149,8 @@ public class menu extends javax.swing.JFrame {
     private javax.swing.JButton btnCoffee4;
     private javax.swing.JButton btnCoffee5;
     private javax.swing.JButton btnCoffee6;
+    private javax.swing.JButton btnEXIT;
+    private javax.swing.JButton btnEXIT1;
     private javax.swing.JButton btnPastry;
     private javax.swing.JButton btnPastry1;
     private javax.swing.JButton btnPastry2;
@@ -2087,6 +2208,8 @@ public class menu extends javax.swing.JFrame {
     private javax.swing.JLabel labelSTRAWBERRY;
     private javax.swing.JLabel labelTART;
     private javax.swing.JLabel labelTea;
+    private javax.swing.JLabel labelTotal;
+    private javax.swing.JLabel labelYourOrder;
     private javax.swing.JPanel panelCART;
     private javax.swing.JPanel panelCOFFEEMenu;
     private javax.swing.JPanel panelMenu;
@@ -2119,6 +2242,7 @@ public class menu extends javax.swing.JFrame {
     private javax.swing.JTextField txtSize;
     private javax.swing.JTextField txtSize2;
     private javax.swing.JTextField txtSize3;
+    private javax.swing.JTextField txtTOTAL;
     private javax.swing.JTextField txtTeaName;
     // End of variables declaration//GEN-END:variables
 
