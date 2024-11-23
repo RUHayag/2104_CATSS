@@ -1,14 +1,14 @@
 
 package Stocks;
 
-import javax.swing.*;
-import menu.menu;
 import java.sql.*;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-
+import menu.menu;
+import SalesHistory.sales;
 
 public class stocks extends javax.swing.JFrame {
 
@@ -106,12 +106,14 @@ public class stocks extends javax.swing.JFrame {
         lblProdID = new javax.swing.JLabel();
         productID = new javax.swing.JComboBox<>();
         btnSearch = new javax.swing.JButton();
+        btnCheckSales = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         stocksTbl = new javax.swing.JTable();
         btnBack = new javax.swing.JButton();
         lblBGkape = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("STOCKS");
 
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
@@ -122,18 +124,18 @@ public class stocks extends javax.swing.JFrame {
 
         labelPRONAME.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPRONAME.setForeground(new java.awt.Color(255, 255, 255));
-        labelPRONAME.setText("PRODUCT NAME:");
-        jPanel1.add(labelPRONAME, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 190, 160, 26));
+        labelPRONAME.setText("PRODUCT NAME :");
+        jPanel1.add(labelPRONAME, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 300, 160, 26));
 
         labelPROprice.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPROprice.setForeground(new java.awt.Color(255, 255, 255));
-        labelPROprice.setText("PRODUCT PRICE:");
-        jPanel1.add(labelPROprice, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 270, 160, 26));
+        labelPROprice.setText("PRODUCT PRICE :");
+        jPanel1.add(labelPROprice, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 370, 160, 26));
 
         labelPROQTY.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         labelPROQTY.setForeground(new java.awt.Color(255, 255, 255));
-        labelPROQTY.setText("PRODUCT QTY:");
-        jPanel1.add(labelPROQTY, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 350, 160, 26));
+        labelPROQTY.setText("PRODUCT QTY :");
+        jPanel1.add(labelPROQTY, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 440, 160, 26));
 
         txtPName.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         txtPName.addActionListener(new java.awt.event.ActionListener() {
@@ -141,7 +143,7 @@ public class stocks extends javax.swing.JFrame {
                 txtPNameActionPerformed(evt);
             }
         });
-        jPanel1.add(txtPName, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 190, 304, -1));
+        jPanel1.add(txtPName, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 300, 304, -1));
 
         txtPPrice.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         txtPPrice.addActionListener(new java.awt.event.ActionListener() {
@@ -149,10 +151,10 @@ public class stocks extends javax.swing.JFrame {
                 txtPPriceActionPerformed(evt);
             }
         });
-        jPanel1.add(txtPPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 270, 304, -1));
+        jPanel1.add(txtPPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 370, 304, -1));
 
         txtPQty.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        jPanel1.add(txtPQty, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 350, 304, -1));
+        jPanel1.add(txtPQty, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 440, 304, -1));
 
         btnAdd.setBackground(new java.awt.Color(0, 153, 255));
         btnAdd.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -163,7 +165,7 @@ public class stocks extends javax.swing.JFrame {
                 btnAddActionPerformed(evt);
             }
         });
-        jPanel1.add(btnAdd, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 430, 116, 39));
+        jPanel1.add(btnAdd, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 530, 116, 39));
 
         btnUpdate.setBackground(new java.awt.Color(0, 153, 255));
         btnUpdate.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -174,7 +176,7 @@ public class stocks extends javax.swing.JFrame {
                 btnUpdateActionPerformed(evt);
             }
         });
-        jPanel1.add(btnUpdate, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 430, 116, 39));
+        jPanel1.add(btnUpdate, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 530, 116, 39));
 
         btnDelete.setBackground(new java.awt.Color(255, 0, 51));
         btnDelete.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -185,16 +187,16 @@ public class stocks extends javax.swing.JFrame {
                 btnDeleteActionPerformed(evt);
             }
         });
-        jPanel1.add(btnDelete, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 430, 116, 39));
+        jPanel1.add(btnDelete, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 530, 116, 39));
 
         lblProdID.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         lblProdID.setForeground(new java.awt.Color(255, 255, 255));
-        lblProdID.setText("PRODUCT ID:");
-        jPanel1.add(lblProdID, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 100, 120, 26));
+        lblProdID.setText("PRODUCT ID :");
+        jPanel1.add(lblProdID, new org.netbeans.lib.awtextra.AbsoluteConstraints(130, 230, 120, 26));
 
         productID.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         productID.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-        jPanel1.add(productID, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 100, 110, -1));
+        jPanel1.add(productID, new org.netbeans.lib.awtextra.AbsoluteConstraints(260, 230, 110, -1));
 
         btnSearch.setBackground(new java.awt.Color(0, 153, 255));
         btnSearch.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -205,7 +207,18 @@ public class stocks extends javax.swing.JFrame {
                 btnSearchActionPerformed(evt);
             }
         });
-        jPanel1.add(btnSearch, new org.netbeans.lib.awtextra.AbsoluteConstraints(370, 100, 90, 40));
+        jPanel1.add(btnSearch, new org.netbeans.lib.awtextra.AbsoluteConstraints(380, 230, 90, 40));
+
+        btnCheckSales.setBackground(new java.awt.Color(0, 102, 0));
+        btnCheckSales.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        btnCheckSales.setForeground(new java.awt.Color(255, 255, 255));
+        btnCheckSales.setText("SALES HISTORY");
+        btnCheckSales.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCheckSalesActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnCheckSales, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 690, 180, 70));
 
         stocksTbl.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         stocksTbl.setModel(new javax.swing.table.DefaultTableModel(
@@ -374,6 +387,11 @@ public class stocks extends javax.swing.JFrame {
             Logger.getLogger(stocks.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_btnDeleteActionPerformed
+
+    private void btnCheckSalesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCheckSalesActionPerformed
+        sales sss = new sales();
+        sss.setVisible(true);
+    }//GEN-LAST:event_btnCheckSalesActionPerformed
  
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
@@ -410,6 +428,7 @@ public class stocks extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnBack;
+    private javax.swing.JButton btnCheckSales;
     private javax.swing.JButton btnDelete;
     private javax.swing.JButton btnSearch;
     private javax.swing.JButton btnUpdate;
