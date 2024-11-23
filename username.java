@@ -1,11 +1,11 @@
 
 package user_name;
 
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.sql.*;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import menu.menu;
 
 
@@ -28,6 +28,7 @@ public class username extends javax.swing.JFrame {
         lBG = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("CUSTOMER NAME");
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         lSU.setFont(new java.awt.Font("Segoe UI", 1, 36)); // NOI18N
@@ -73,26 +74,46 @@ public class username extends javax.swing.JFrame {
     private void bntOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_bntOKActionPerformed
         try {
             String customerName = txtName.getText();
-        
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql://localhost/coffeetea","root","");
-            PreparedStatement ps = con.prepareStatement("INSERT INTO customers(customerName)VALUES(?)");
-            ps.setString(1, customerName);
-            ps.executeUpdate();
-        
-            if(customerName.isEmpty()){
+
+            // Check if the name is empty
+            if (customerName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter your name first.");
+                return;
             }
-            else {
+
+            // Connect to the database
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost/coffeetea", "root", "");
+
+            // Check if the customer name already exists
+            PreparedStatement checkStmt = con.prepareStatement("SELECT COUNT(*) FROM customers WHERE customerName = ?");
+            checkStmt.setString(1, customerName);
+            ResultSet rs = checkStmt.executeQuery();
+
+            if (rs.next() && rs.getInt(1) > 0) {
+                JOptionPane.showMessageDialog(this, "The username '" + customerName + "' is already used. Please enter a different name.");
+                txtName.setText("");
+            } else {
+                // If the name does not exist, proceed to insert it
+                PreparedStatement ps = con.prepareStatement("INSERT INTO customers(customerName) VALUES(?)");
+                ps.setString(1, customerName);
+                ps.executeUpdate();
+
+                // Proceed to the next screen
                 this.setVisible(false);
-            
                 menu menuFrame = new menu();
                 menuFrame.setUserName(customerName);
                 menuFrame.setVisible(true);
-            
             }
+
+            // Close resources
+            rs.close();
+            checkStmt.close();
+            con.close();
+
         } catch (Exception ex) {
             Logger.getLogger(username.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "An error occurred: " + ex.getMessage());
         }
     }//GEN-LAST:event_bntOKActionPerformed
 
@@ -126,7 +147,7 @@ public class username extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new username().setVisible(true);
+                new username().setVisible(true); 
             }
         });
     }
